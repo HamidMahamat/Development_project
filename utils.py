@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import copy
 
 """
-1 - enlever NA values pour chaque colonne (arguments, le nom de la colonne, p, )
+1 - Hamid: enlever NA values pour chaque colonne (arguments, le nom de la colonne, p, )
 -> compter le nombre de catégories
 -> si le nombre de Nan <p*min(N autres catégories) avec p petit, alors remplacer par catégorie makoritaire
 -> sinon mettre une nouvelle catégorie 
@@ -34,6 +35,7 @@ def deal_with_NA_values(df, r, r_float):
     Returns:
         df (_pd_dataframe_): dataframe containing the column with dealed Nan problem
     """
+    cleaned_df = copy.copy(df)
     for column in df.columns:
         categories_counts = df[column].value_counts(dropna=True)
         Nan_counts = df[column].size - sum(categories_counts)
@@ -44,21 +46,21 @@ def deal_with_NA_values(df, r, r_float):
             # Categorical float value
             if categories_counts.size/df[column].size <= r_float : 
                 if Nan_counts/df[column].size <= r : # Don't create a new class
-                    df[column]= df[column].fillna(categories_counts.idxmax())
+                    cleaned_df[column]= df[column].fillna(categories_counts.idxmax())
                 else :
-                    df[column] = df[column].fillna(np.mean(df[column]))
+                    cleaned_df[column] = df[column].fillna(np.mean(df[column]))
                 
             else :
                 # When it's not categorical compute the mean 
-                df[column] = df[column].fillna(np.mean(df[column]))
+                cleaned_df[column] = df[column].fillna(np.mean(df[column]))
 
         else :
             # We consider as categorical all column with other non float type
             if Nan_counts/df[column].size <= r : # Don't create a new class
-                df[column] = df[column].fillna(categories_counts.idxmax())
+                cleaned_df[column] = df[column].fillna(categories_counts.idxmax())
             else :
-                df[column] = df[column].fillna("unknown")
-    return df
+                cleaned_df[column] = df[column].fillna("unknown")
+    return cleaned_df
             
 
 def one_hot_encoding(df, target, columns=[]):
