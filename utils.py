@@ -12,11 +12,10 @@ import matplotlib.pyplot as plt
 -> apply get dummy
 -> remove original columns and concat with new ones
 -> return the new df
-
 3-Hamid: PCA
-4- Yassine:splitting data
-5- visualizing balance between classes
-6_ normalization
+4- Yassine: splitting data
+5- Yassine: visualizing balance between classes
+6_ Yassine: normalization
 7- models (classes with same methods?)
 8 - training (different functions for different models?)
 9- testing (score?)
@@ -70,6 +69,11 @@ def one_hot_encoding(df):
     Returns:
         DataFrame: new one hot encoded dataframe
     """
-    categorical_columns = df.select_dtypes(include=['object'])
-    return categorical_columns    
+    categorical_columns = df.select_dtypes(include=['object']).columns.tolist()
+    """for col in categorical_columns:
+        df[col] = df[col].astype('category')"""
+    encoded_columns = pd.get_dummies(df, columns=categorical_columns)
+    df = df.drop(categorical_columns, axis=1)
+    df_encoded = pd.concat([df, encoded_columns], axis=1)
+    return df_encoded
     
