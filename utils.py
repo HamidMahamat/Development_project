@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import copy
+import re
 
 """
 1 - Hamid: enlever NA values pour chaque colonne (arguments, le nom de la colonne, p, )
@@ -22,6 +23,49 @@ import copy
 9- testing (score?)
 """
 
+def remove_weird_characters(text):
+    # Define the pattern for weird characters using regular expressions
+    cleaned_text = text
+    pattern = r'[/[^\w.]|_/g]'  # This pattern allows letters, numbers, and spaces
+
+    # Replace weird characters with an empty string
+    if not re.search(pattern, text):
+        cleaned_text = np.nan
+    return cleaned_text
+
+def convert_to_appropriate_type(df):
+    """convert strings to appropriate types
+
+    Args:
+        df (DataFrame): data
+
+    Returns:
+        new_df: new dataframe
+    """
+    columns = df.columns
+    row_size = df[columns[0]].size
+    col_size = len(columns)
+
+    #numpy_data_init = np.empty((row_size, col_size)) 
+    #new_df = pd.DataFrame(numpy_data_init, columns=columns.tolist())
+
+    new_df = copy.deepcopy(df)
+    non_int_columns=[]
+    
+
+    for column in df.columns:
+        df[column] = df[column].apply(lambda x: remove_weird_characters(str(x)))
+        try:
+            new_df[column] = df[column].astype(int)
+        except ValueError:
+            non_int_columns.append(column)
+    for column in non_int_columns:
+        try:
+            new_df[column] = df[column].astype(float)
+        except ValueError:
+            pass
+    return new_df
+
 def deal_with_NA_values(df, r, r_float):
     """This function deals with NA values:
     - if the number of NA values is high (according to ratio r) create a new category "unknown"
@@ -35,6 +79,7 @@ def deal_with_NA_values(df, r, r_float):
     Returns:
         df (_pd_dataframe_): dataframe containing the column with dealed Nan problem
     """
+    # converting 
     cleaned_df = copy.copy(df)
     for column in df.columns:
         categories_counts = df[column].value_counts(dropna=True)
