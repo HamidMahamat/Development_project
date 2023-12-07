@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import copy
 import re
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import LabelEncoder
 
 """
 1 - Hamid: enlever NA values pour chaque colonne (arguments, le nom de la colonne, p, )
@@ -26,6 +28,11 @@ import re
 def remove_weird_characters(text):
     # Define the pattern for weird characters using regular expressions
     cleaned_text = text
+    cleaned_text = cleaned_text.strip()
+    cleaned_text = cleaned_text.replace('\t', "")
+    cleaned_text = cleaned_text.replace(" ", "")
+    if '\t' in cleaned_text:
+        print(cleaned_text)
     pattern = r'[/[^\w.]|_/g]'  # This pattern allows letters, numbers, and spaces
 
     # Replace weird characters with an empty string
@@ -54,14 +61,14 @@ def convert_to_appropriate_type(df):
     
 
     for column in df.columns:
-        df[column] = df[column].apply(lambda x: remove_weird_characters(str(x)))
+        new_df[column] = df[column].apply(lambda x: remove_weird_characters(str(x)))
         try:
-            new_df[column] = df[column].astype(int)
+            new_df[column] = new_df[column].astype(int)
         except ValueError:
             non_int_columns.append(column)
     for column in non_int_columns:
         try:
-            new_df[column] = df[column].astype(float)
+            new_df[column] = new_df[column].astype(float)
         except ValueError:
             pass
     return new_df
@@ -131,7 +138,7 @@ def depep_cleaning_visualization(df):
             pass
             
 
-def one_hot_encoding(df, target, columns=[]):
+def one_hot_encoding(df):
     """Apply one hot encoding on categorical columns of df.
 
     Args:
@@ -142,13 +149,30 @@ def one_hot_encoding(df, target, columns=[]):
     Returns:
         DataFrame: new one hot encoded dataframe
     """
-    if target is not None:
-        df = df.drop(target, axis=1)
-    if columns == []:
-        encoded_columns = pd.get_dummies(df)
+    df_copy = copy.deepcopy(df)
+    # define columns to encode
+    columns_to_encode = []
+    for column in df.columns:
+        if df[column].dtype != "float":
+            if df[column].value_counts(dropna=True).size>2:
+                columns_to_encode.append(column)
+            else:
+                label_encoder = LabelEncoder()
+                df_copy[column] = label_encoder.fit_transform(df[column])
+    
+    if len(columns_to_encode)!=0:
+        # Initialize OneHotEncoder
+        onehot_encoder = OneHotEncoder(sparse=False)
+
+        # Fit and transform the data
+        encoded_data = onehot_encoder.fit_transform(df_copy[columns_to_encode])
+
+        # Create a DataFrame with the encoded data
+        encoded_df = pd.DataFrame(encoded_data, columns=onehot_encoder.get_feature_names_out(columns_to_encode))
+        # Concatenate the encoded DataFrame with the original DataFrame
+        df_encoded = pd.concat([df_copy.drop(columns_to_encode, axis=1), encoded_df], axis=1)
     else:
-        encoded_columns = pd.get_dummies(df, columns=columns)
-    df = df.drop(encoded_columns.columns.tolist(), axis=1)
-    df_encoded = pd.concat([df, encoded_columns], axis=1)
+        df_encoded = df_copy
+
     return df_encoded
     
