@@ -7,6 +7,8 @@ import scipy
 import math
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
+import xgboost as xgb
+from sklearn.metrics import f1_score
 
 
 """
@@ -221,20 +223,66 @@ def normalization(df):
     test_normalized_df[numerical_columns] = stdScaler.transform(test_normalized_df[numerical_columns])
     return train_normalized_df, test_normalized_df
 
-def handle_skewness(df):
-    """handle very skewed features
+def handle_skewness(train_df, test_df):
+    """
+    handle very skewed features
 
     Args:
-        df (Sataframe): dataset
+        train_df (Dataframe): train_dataset
+        train_df (Dataframe): train_dataset
+
+    """
+    non_skewed_train_df = copy.deepcopy(train_df)
+    non_skewed_test_df = copy.deepcopy(test_df)
+    for column in non_skewed_train_df.columns:
+        if non_skewed_train_df[column].dtype != "O" and non_skewed_train_df[column].value_counts().size>2:
+            skew= scipy.stats.skew(non_skewed_train_df[column], axis=0)
+            if skew>=1 or skew<=-1:
+                try:
+                    non_skewed_train_df[column] = non_skewed_train_df[column].apply(math.log1p)
+                    non_skewed_test_df[column] = non_skewed_test_df[column].apply(math.log1p)
+                except ValueError:
+                    pass
+    return non_skewed_train_df, non_skewed_test_df
+
+def splitting_target(df, target):
+    """split the target from the features
+
+    Args:
+        df (Dataframe): data
+        target (string): target column name
 
     Returns:
-        Dataframe: non skewed dataset
+        X (Dataframe): features
+        y (Dataframe): target
     """
-    non_skewed_df = copy.deepcopy(df)
-    for column in non_skewed_df.columns:
-        if non_skewed_df[column].dtype != "O" and non_skewed_df[column].value_counts().size>2:
-            skew= scipy.stats.skew(non_skewed_df[column], axis=0)
-            if skew>=1 or skew<=-1:
-                non_skewed_df[column] = non_skewed_df[column].apply(math.log1p)
-    return non_skewed_df
-    
+    X = df.drop([target], axis=1)
+    y = df[target]
+    return X, y
+
+class XG_boost:
+    def __init__(self):
+        self.model = xgb.XGBClassifier(subsample=0.8, colsample_bytree=0.8, random_state=42)
+
+    def train(self, X_train, y_train):
+        self.model.fit(X_train, y_train)
+    def test(self, X_test, y_test):
+        predictions = self.model.predict(X_test)
+        score = f1_score(predictions, y_test)
+        return score
+
+
+def model_training(model, train_data, target):
+    """train the model 
+
+    Args:
+        model (Object): model to be trained
+        train_data (Dataframe)
+
+    """
+    X_train, y_train = splitting_target(train_data, target)
+    model.train(X_train, y_train)
+
+def model_testing(model, test_data, target):
+    X_test, y_test = splitting_target(test_data, target)
+    return model.test(X_test, y_test)
