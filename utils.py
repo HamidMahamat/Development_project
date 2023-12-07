@@ -36,7 +36,7 @@ def remove_weird_characters(text):
     pattern = r'[/[^\w.]|_/g]'  # This pattern allows letters, numbers, and spaces
 
     # Replace weird characters with an empty string
-    if not re.search(pattern, text):
+    if not re.search(pattern, text) or text == "nan":
         cleaned_text = np.nan
     return cleaned_text
 
@@ -50,11 +50,6 @@ def convert_to_appropriate_type(df):
         new_df: new dataframe
     """
     columns = df.columns
-    row_size = df[columns[0]].size
-    col_size = len(columns)
-
-    #numpy_data_init = np.empty((row_size, col_size)) 
-    #new_df = pd.DataFrame(numpy_data_init, columns=columns.tolist())
 
     new_df = copy.deepcopy(df)
     non_int_columns=[]
