@@ -88,18 +88,31 @@ def deal_with_NA_values(df, r, r_float):
         Nan_counts = df[column].size - sum(categories_counts)
         
         if df[column].dtype == 'float' : 
-            # Verify if its categorical or take any float values
-            
-            # Categorical float value
-            if categories_counts.size/df[column].size <= r_float : 
-                if Nan_counts/df[column].size <= r : # Don't create a new class
-                    cleaned_df[column]= df[column].fillna(categories_counts.idxmax())
+            if all([round(val)==val for val in df[column] if not np.isnan(val)]) : # Int type condition 
+                # Verify if its categorical or take any float values
+                
+                # Categorical float value
+                if categories_counts.size/df[column].size <= r_float : 
+                    if Nan_counts/df[column].size <= r : # Don't create a new class
+                        cleaned_df[column]= df[column].fillna(categories_counts.idxmax())
+                    else :
+                        cleaned_df[column] = df[column].fillna(round(np.mean(df[column])))
+                    
                 else :
+                    # When it's not categorical compute the mean 
+                    cleaned_df[column] = df[column].fillna(round(np.mean(df[column])))
+            else :
+                
+                if categories_counts.size/df[column].size <= r_float : 
+                    if Nan_counts/df[column].size <= r : # Don't create a new class
+                        cleaned_df[column]= df[column].fillna(categories_counts.idxmax())
+                    else :
+                        cleaned_df[column] = df[column].fillna(np.mean(df[column]))
+                    
+                else :
+                    # When it's not categorical compute the mean 
                     cleaned_df[column] = df[column].fillna(np.mean(df[column]))
                 
-            else :
-                # When it's not categorical compute the mean 
-                cleaned_df[column] = df[column].fillna(np.mean(df[column]))
 
         else :
             # We consider as categorical all column with other non float type
@@ -108,6 +121,16 @@ def deal_with_NA_values(df, r, r_float):
             else :
                 cleaned_df[column] = df[column].fillna("unknown")
     return cleaned_df
+            
+
+def depep_cleaning_visualization(df):
+    columns = df.columns
+    
+    for column in columns :
+        if df[column].dtype == 'O' :
+            print(df[column].value_counts(dropna=True))
+        else :
+            pass
             
 
 def one_hot_encoding(df):
