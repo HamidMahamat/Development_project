@@ -3,8 +3,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import copy
 import re
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.preprocessing import LabelEncoder
+import scipy
+import math
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
+
 
 """
 1 - Hamid: enlever NA values pour chaque colonne (arguments, le nom de la colonne, p, )
@@ -26,13 +29,19 @@ from sklearn.preprocessing import LabelEncoder
 """
 
 def remove_weird_characters(text):
+    """remove all problematic characters (eg. /t /n or ?) from a text
+
+    Args:
+        text (string)
+
+    Returns:
+        cleaned_text (string): text with no problematic characters
+    """
     # Define the pattern for weird characters using regular expressions
     cleaned_text = text
     cleaned_text = cleaned_text.strip()
     cleaned_text = cleaned_text.replace('\t', "")
     cleaned_text = cleaned_text.replace(" ", "")
-    if '\t' in cleaned_text:
-        print(cleaned_text)
     pattern = r'[/[^\w.]|_/g]'  # This pattern allows letters, numbers, and spaces
 
     # Replace weird characters with an empty string
@@ -49,18 +58,18 @@ def convert_to_appropriate_type(df):
     Returns:
         new_df: new dataframe
     """
-    columns = df.columns
 
     new_df = copy.deepcopy(df)
     non_int_columns=[]
     
-
+    # coverting concerned columns types into int
     for column in df.columns:
         new_df[column] = df[column].apply(lambda x: remove_weird_characters(str(x)))
         try:
             new_df[column] = new_df[column].astype(int)
         except ValueError:
             non_int_columns.append(column)
+    # coverting concerned columns types into floats 
     for column in non_int_columns:
         try:
             new_df[column] = new_df[column].astype(float)
@@ -81,7 +90,6 @@ def deal_with_NA_values(df, r, r_float):
     Returns:
         df (_pd_dataframe_): dataframe containing the column with dealed Nan problem
     """
-    # converting 
     cleaned_df = copy.copy(df)
     for column in df.columns:
         categories_counts = df[column].value_counts(dropna=True)
@@ -148,7 +156,7 @@ def one_hot_encoding(df):
     # define columns to encode
     columns_to_encode = []
     for column in df.columns:
-        if df[column].dtype != "float":
+        if df[column].dtype == "O":
             if df[column].value_counts(dropna=True).size>2:
                 columns_to_encode.append(column)
             else:
@@ -170,4 +178,63 @@ def one_hot_encoding(df):
         df_encoded = df_copy
 
     return df_encoded
+
+def data_splitting(df):
+    """Split the data into train and test datasets 
+
+    Args:
+        df (DataFrame): dataset
+
+    Returns:
+        train_df (Dataframe): train data
+        test_df (Dataframe): test data
+    """
+    train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
+    return train_df, test_df
+
+def normalization(df):
+    """scale the dataset and resolve skewness.
+
+    Args:
+        df (DataFrame): dataset
+
+    Returns:
+        DataFrame: normalized dataset
+    """
+    # splitting data
+    train_df, test_df = data_splitting(df)
+
+    # creating copy of the datasets
+    train_normalized_df = copy.deepcopy(train_df)
+    test_normalized_df = copy.deepcopy(test_df)
+
+
+    #retriving the numerical columns to scale
+    numerical_columns = []
+    for column in df.columns:
+        if df[column].dtype != "O" and df[column].value_counts().size>2:
+            numerical_columns.append(column)
+
+    # scaling the datasets
+    stdScaler = StandardScaler()
+    train_normalized_df[numerical_columns] = stdScaler.fit_transform(train_normalized_df[numerical_columns])
+    test_normalized_df[numerical_columns] = stdScaler.transform(test_normalized_df[numerical_columns])
+    return train_normalized_df, test_normalized_df
+
+def handle_skewness(df):
+    """handle very skewed features
+
+    Args:
+        df (Sataframe): dataset
+
+    Returns:
+        Dataframe: non skewed dataset
+    """
+    non_skewed_df = copy.deepcopy(df)
+    for column in non_skewed_df.columns:
+        if non_skewed_df[column].dtype != "O" and non_skewed_df[column].value_counts().size>2:
+            skew= scipy.stats.skew(non_skewed_df[column], axis=0)
+            if skew>=1 or skew<=-1:
+                non_skewed_df[column] = non_skewed_df[column].apply(math.log1p)
+    return non_skewed_df
     
