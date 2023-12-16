@@ -9,6 +9,10 @@ from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
 from sklearn.metrics import f1_score
+import torch
+import torch.nn as nn
+from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
 
 
 """
@@ -260,7 +264,7 @@ def splitting_target(df, target):
     y = df[target]
     return X, y
 
-class XG_boost:
+class XG_boost_trainer:
     def __init__(self):
         self.model = xgb.XGBClassifier(subsample=0.8, colsample_bytree=0.8, random_state=42)
 
@@ -271,8 +275,70 @@ class XG_boost:
         score = f1_score(predictions, y_test)
         return score
 
+class MLP_model(nn.Module):
+    def __init__(self, input_size):
+        super(MLP_model,self).__init__()
+        self.fc1 = nn.Linear(input_size, 2) # linear layer (784 -> 10)
+        
+    def forward(self,x):
+        x = self.fc1(x)
+        return x
+    
+class MLP_trainer:
+    def __init__(self, input_size):
+        self.model = MLP_model(input_size)
+        self.batch_size = 20 # how many samples per batch to load
+        self.criterion = nn.CrossEntropyLoss() # specify loss function (categorical cross-entropy)
+        self.optimizer = torch.optim.SGD(self.model.parameters(),lr = 0.01) # specify optimizer (stochastic gradient descent) and learning rate
+        self.n_epochs = 100
+        self.batch_size = 30
 
-def model_training(model, train_data, target):
+    def train(self, X_train, y_train):
+        # create train dataset and train loader
+        features_tensor = torch.tensor(X_train.values, dtype=torch.float32)
+        labels_tensor = torch.tensor(y_train.values, dtype=torch.long)
+        train_data = TensorDataset(features_tensor, labels_tensor)
+        train_loader = DataLoader(train_data, batch_size = self.batch_size)
+
+        # train the model
+        for epoch in range(self.n_epochs):
+            train_loss = 0 # monitor losses
+            
+            # train the model
+            self.model.train() # prep model for training
+            for data, label in train_loader:
+                self.optimizer.zero_grad() # clear the gradients of all optimized variables
+                output = self.model(data) # forward pass: compute predicted outputs by passing inputs to the model
+                loss = self.criterion(output, label) # calculate the loss
+                loss.backward() # backward pass: compute gradient of the loss with respect to model parameters
+                self.optimizer.step() # perform a single optimization step (parameter update)
+                train_loss += loss.item() * data.size(0) # update running training loss
+            train_loss /= len(train_loader.sampler)
+      
+            print('epoch: {} \ttraining Loss: {:.6f}'.format(epoch+1, train_loss))
+
+    def test(self, X_test, y_test):
+        features_tensor = torch.tensor(X_test.values, dtype=torch.float32)
+        labels_tensor = torch.tensor(y_test.values, dtype=torch.long)
+        test_data = TensorDataset(features_tensor, labels_tensor)
+        test_loader = DataLoader(test_data, batch_size = self.batch_size)
+        true_labels = []
+        predicted_labels = []
+        # initialize lists to monitor test loss and accuracy
+        self.model.eval() # prep model for evaluation
+        for data, label in test_loader:
+            with torch.no_grad():
+                outputs = self.model(data) # forward pass: compute predicted outputs by passing inputs to the model
+            # Convert outputs to predicted labels
+            _, preds = torch.max(outputs, 1)
+            true_labels.extend(label.tolist())
+            predicted_labels.extend(preds.tolist())
+        score = f1_score(true_labels, predicted_labels, average='weighted')
+        return score
+            
+
+
+def model_training(trainer, train_data, target):
     """train the model 
 
     Args:
@@ -281,7 +347,7 @@ def model_training(model, train_data, target):
 
     """
     X_train, y_train = splitting_target(train_data, target)
-    model.train(X_train, y_train)
+    trainer.train(X_train, y_train)
 
 def model_testing(model, test_data, target):
     X_test, y_test = splitting_target(test_data, target)
