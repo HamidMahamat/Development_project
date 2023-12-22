@@ -1,11 +1,9 @@
 import unittest
 from utils import *
 
-import os
-
 
 # The test case class
-class TestAddFunction(unittest.TestCase):
+class TestFunction(unittest.TestCase):
 
     # Test method for the add function
     def test_preprocessing(self):
