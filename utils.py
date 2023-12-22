@@ -17,7 +17,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from itertools import product
 from abc import ABC, abstractmethod
 
-#__________________________________Main Functions used in main.ipynb____________________________________
+#__________________________________Main Functions used in main.ipynb_____________________________________
 
 def preprocessing(df):
     """Function for preprocessing: converting data to appropriate type, data cleaning,
